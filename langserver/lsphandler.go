@@ -72,38 +72,46 @@ func (h *LspHandler) handleTextDocumentCompletion(ctx context.Context, params *l
 // Deliver ...
 func (h *LspHandler) Deliver(ctx context.Context, r *jsonrpc2.Request, delivered bool) bool {
 	h.LogDebug("Requested '%s'\n", r.Method)
-	if delivered {
-		return false
-	}
 
 	switch r.Method {
 	case lsp.MethodInitialize:
-		if err := r.Reply(ctx, lsp.InitializeResult{
+		h.LogDebug("initialized")
+		// @TODO:
+		// Run the index.
+
+		// Send back the response.
+		err := r.Reply(ctx, lsp.InitializeResult{
 			Capabilities: lsp.ServerCapabilities{
 				CompletionProvider: &lsp.CompletionOptions{
 					TriggerCharacters: []string{"."},
 				},
-				DefinitionProvider: true,
-				HoverProvider:      true,
+				DefinitionProvider: false,
+				HoverProvider:      false,
 				SignatureHelpProvider: &lsp.SignatureHelpOptions{
 					TriggerCharacters: []string{"(", ","},
 				},
 			},
-		}, nil); err != nil {
-			return false
+		}, nil)
+
+		if err != nil {
+			h.LogError("Error sending response: %s\n", err)
 		}
+
 		h.initialized = true
-		return true
-	case lsp.MethodInitialized:
+
 		return true
 	}
 
-	// DEFAULT / OTHERWISE
-
+	// If something went wrong, return false.
 	if !h.initialized {
 		if !r.IsNotify() {
-			r.Reply(ctx, nil, jsonrpc2.Errorf(jsonrpc2.ServerNotInitialized, "Not initialized yet"))
+			r.Reply(
+				ctx,
+				nil,
+				jsonrpc2.Errorf(jsonrpc2.ServerNotInitialized, "Not initialized yet"),
+			)
 		}
+
 		return false
 	}
 
@@ -115,13 +123,16 @@ func (h *LspHandler) Deliver(ctx context.Context, r *jsonrpc2.Request, delivered
 		}
 	}()
 
+	// Handle the request.
 	switch r.Method {
 	case lsp.MethodTextDocumentCompletion:
 		var params lsp.CompletionParams
 		json.Unmarshal(*r.Params, &params)
 		items, err := h.handleTextDocumentCompletion(ctx, &params)
 		h.replyEither(ctx, r, items, err)
-		return h.baseLspHandler.Deliver(ctx, r, delivered)
+
+		return h.baseLspHandler.Deliver(ctx, r, false)
 	}
+
 	return true
 }
