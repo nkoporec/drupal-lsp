@@ -3,7 +3,7 @@ package langserver
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"log"
 
 	"go.lsp.dev/jsonrpc2"
 	lsp "go.lsp.dev/protocol"
@@ -11,57 +11,19 @@ import (
 
 // LspHandler ...
 type LspHandler struct {
-	initialDiagnostics map[string][]lsp.Diagnostic
-	baseLspHandler
-	initialized bool
+	jsonrpc2.EmptyHandler
+	rootUri string
 }
 
-var (
-	// ErrWalkAbort should be returned if a walk function should abort early
-	ErrWalkAbort = fmt.Errorf("OK")
-)
+// InitializeParams
+type InitializeParams struct {
+	ProcessID int    `json:"processId,omitempty"`
+	RootURI   string `json:"rootUri,omitempty"`
+}
 
 // NewLspHandler ...
 func NewLspHandler() *LspHandler {
-	logLv := LogLevelInfo
-	return &LspHandler{
-		baseLspHandler: baseLspHandler{
-			LogLevel: logLv,
-		},
-		initialized: false,
-	}
-}
-
-func completionItemFromSymbol(s Symbol) (lsp.CompletionItem, error) {
-	kind, err := completionItemKindForSymbol(s)
-	if err != nil {
-		return lsp.CompletionItem{}, err
-	}
-	return lsp.CompletionItem{
-		Kind:   kind,
-		Label:  s.Name(),
-		Detail: s.String(),
-		Documentation: lsp.MarkupContent{
-			Kind:  lsp.PlainText,
-			Value: s.Documentation(),
-		},
-	}, nil
-}
-
-func completionItemKindForSymbol(s Symbol) (lsp.CompletionItemKind, error) {
-	switch s.(type) {
-	case VariableSymbol:
-		return lsp.VariableCompletion, nil
-	case ConstantSymbol:
-		return lsp.ConstantCompletion, nil
-	case FunctionSymbol:
-		return lsp.FunctionCompletion, nil
-	case ClassSymbol:
-		return lsp.ClassCompletion, nil
-	case ProtoTypeOrInstanceSymbol:
-		return lsp.ClassCompletion, nil
-	}
-	return lsp.CompletionItemKind(-1), fmt.Errorf("Symbol not found")
+	return &LspHandler{}
 }
 
 func (h *LspHandler) handleTextDocumentCompletion(ctx context.Context, params *lsp.CompletionParams) ([]lsp.CompletionItem, error) {
@@ -71,13 +33,23 @@ func (h *LspHandler) handleTextDocumentCompletion(ctx context.Context, params *l
 
 // Deliver ...
 func (h *LspHandler) Deliver(ctx context.Context, r *jsonrpc2.Request, delivered bool) bool {
-	h.LogDebug("Requested '%s'\n", r.Method)
 
 	switch r.Method {
 	case lsp.MethodInitialize:
-		h.LogDebug("initialized")
-		// @TODO:
+		// Get params.
+		var params InitializeParams
+		if err := json.Unmarshal(*r.Params, &params); err != nil {
+			log.Fatal(err)
+		}
+
+		// Set rootUri.
+		h.rootUri = params.RootURI
+
 		// Run the index.
+		indexer := NewIndexer(h.rootUri)
+		go func() {
+			indexer.Run()
+		}()
 
 		// Send back the response.
 		err := r.Reply(ctx, lsp.InitializeResult{
@@ -94,34 +66,11 @@ func (h *LspHandler) Deliver(ctx context.Context, r *jsonrpc2.Request, delivered
 		}, nil)
 
 		if err != nil {
-			h.LogError("Error sending response: %s\n", err)
+			panic(err)
 		}
-
-		h.initialized = true
 
 		return true
 	}
-
-	// If something went wrong, return false.
-	if !h.initialized {
-		if !r.IsNotify() {
-			r.Reply(
-				ctx,
-				nil,
-				jsonrpc2.Errorf(jsonrpc2.ServerNotInitialized, "Not initialized yet"),
-			)
-		}
-
-		return false
-	}
-
-	// Recover if something bad happens in the handlers...
-	defer func() {
-		err := recover()
-		if err != nil {
-			h.LogWarn("Recovered from panic at %s: %v\n", r.Method, err)
-		}
-	}()
 
 	// Handle the request.
 	switch r.Method {
@@ -129,9 +78,7 @@ func (h *LspHandler) Deliver(ctx context.Context, r *jsonrpc2.Request, delivered
 		var params lsp.CompletionParams
 		json.Unmarshal(*r.Params, &params)
 		items, err := h.handleTextDocumentCompletion(ctx, &params)
-		h.replyEither(ctx, r, items, err)
-
-		return h.baseLspHandler.Deliver(ctx, r, false)
+		r.Reply(ctx, items, err)
 	}
 
 	return true
