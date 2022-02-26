@@ -13,6 +13,7 @@ import (
 type LspHandler struct {
 	jsonrpc2.EmptyHandler
 	rootUri string
+	Indexer *Indexer
 }
 
 // InitializeParams
@@ -28,6 +29,8 @@ func NewLspHandler() *LspHandler {
 
 func (h *LspHandler) handleTextDocumentCompletion(ctx context.Context, params *lsp.CompletionParams) ([]lsp.CompletionItem, error) {
 	result := make([]lsp.CompletionItem, 0, 200)
+	log.Println(h.Indexer.Services)
+
 	return result, nil
 }
 
@@ -46,10 +49,12 @@ func (h *LspHandler) Deliver(ctx context.Context, r *jsonrpc2.Request, delivered
 		h.rootUri = params.RootURI
 
 		// Run the index.
+		// @todo make it async.
 		indexer := NewIndexer(h.rootUri)
-		go func() {
-			indexer.Run()
-		}()
+		indexer.Run()
+
+		// Set the indexer.
+		h.Indexer = indexer
 
 		// Send back the response.
 		err := r.Reply(ctx, lsp.InitializeResult{
