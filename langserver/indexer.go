@@ -15,12 +15,13 @@ type ServiceYaml struct {
 }
 
 type ServiceDefinition struct {
+	Name  string
 	Class string `yaml:"class"`
 }
 
 type Indexer struct {
 	DocumentRoot string
-	Services     []string
+	Services     []ServiceDefinition
 }
 
 func NewIndexer(rootUri string) *Indexer {
@@ -59,7 +60,7 @@ func (i *Indexer) Run() {
 	})
 
 	// Parse the services.
-	serviceNames := make([]string, 0)
+	serviceNames := make([]ServiceDefinition, 0)
 	for _, serviceFilepath := range services {
 		serviceFile, err := ioutil.ReadFile(serviceFilepath)
 		service := &ServiceYaml{}
@@ -67,8 +68,11 @@ func (i *Indexer) Run() {
 			err = yaml.Unmarshal(serviceFile, &service)
 		}
 
-		for name, _ := range service.Services {
-			serviceNames = append(serviceNames, name)
+		for name, item := range service.Services {
+			serviceNames = append(serviceNames, ServiceDefinition{
+				Name:  name,
+				Class: item.Class,
+			})
 		}
 	}
 

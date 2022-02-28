@@ -3,6 +3,7 @@ package langserver
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 
 	"go.lsp.dev/jsonrpc2"
@@ -27,9 +28,29 @@ func NewLspHandler() *LspHandler {
 	return &LspHandler{}
 }
 
+func completionItemForService(s ServiceDefinition) (lsp.CompletionItem, error) {
+	return lsp.CompletionItem{
+		Kind:   lsp.VariableCompletion,
+		Label:  s.Name,
+		Detail: fmt.Sprintf("Class %s", s.Class),
+		Documentation: lsp.MarkupContent{
+			Kind:  lsp.PlainText,
+			Value: s.Class,
+		},
+	}, nil
+}
+
 func (h *LspHandler) handleTextDocumentCompletion(ctx context.Context, params *lsp.CompletionParams) ([]lsp.CompletionItem, error) {
 	result := make([]lsp.CompletionItem, 0, 200)
-	log.Println(h.Indexer.Services)
+
+	for _, item := range h.Indexer.Services {
+		serviceCompletion, err := completionItemForService(item)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		result = append(result, serviceCompletion)
+	}
 
 	return result, nil
 }
