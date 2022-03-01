@@ -1,27 +1,20 @@
 package langserver
 
 import (
+	"drupal-lsp/langserver/parser"
 	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"go.lsp.dev/uri"
 	"gopkg.in/yaml.v2"
 )
 
-type ServiceYaml struct {
-	Services map[string]ServiceDefinition
-}
-
-type ServiceDefinition struct {
-	Name  string
-	Class string `yaml:"class"`
-}
-
 type Indexer struct {
 	DocumentRoot string
-	Services     []ServiceDefinition
+	Services     []parser.ServiceDefinition
 }
 
 func NewIndexer(rootUri string) *Indexer {
@@ -32,7 +25,7 @@ func NewIndexer(rootUri string) *Indexer {
 
 // @todo Implement caching.
 func (i *Indexer) Run() {
-	i.DocumentRoot = fixDocumentRootUri(i.DocumentRoot)
+	i.DocumentRoot = FixDocumentRootUri(i.DocumentRoot)
 
 	// Check if the document root exists.
 	if _, err := os.Stat(i.DocumentRoot); os.IsNotExist(err) {
@@ -41,7 +34,6 @@ func (i *Indexer) Run() {
 
 	// Walk the document root and get all .services.yml files.
 	// @todo Make it for other file types.
-	services := make([]string, 0)
 	filepath.Walk(i.DocumentRoot, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -53,34 +45,27 @@ func (i *Indexer) Run() {
 		}
 
 		if strings.Contains(path, ".services.yml") {
-			services = append(services, path)
+			serviceFile, err := ioutil.ReadFile(path)
+			service := &parser.ServiceYaml{}
+			if err == nil {
+				err = yaml.Unmarshal(serviceFile, &service)
+			}
+
+			for name, item := range service.Services {
+				i.Services = append(i.Services, parser.ServiceDefinition{
+					Name:  name,
+					Class: item.Class,
+				})
+			}
 		}
 
 		return nil
 	})
 
-	// Parse the services.
-	serviceNames := make([]ServiceDefinition, 0)
-	for _, serviceFilepath := range services {
-		serviceFile, err := ioutil.ReadFile(serviceFilepath)
-		service := &ServiceYaml{}
-		if err == nil {
-			err = yaml.Unmarshal(serviceFile, &service)
-		}
-
-		for name, item := range service.Services {
-			serviceNames = append(serviceNames, ServiceDefinition{
-				Name:  name,
-				Class: item.Class,
-			})
-		}
-	}
-
-	i.Services = serviceNames
 }
 
 // Remove the file:// prefix so we can access the folder.
-func fixDocumentRootUri(s string) string {
+func FixDocumentRootUri(s string) string {
 	if strings.HasPrefix(s, "file://") {
 		return s[len("file://"):]
 	}
@@ -91,4 +76,12 @@ func fixDocumentRootUri(s string) string {
 	}
 
 	return s
+}
+
+func UriToFilename(v uri.URI) string {
+	s := string(v)
+	fixed := FixDocumentRootUri(s)
+	v = uri.URI(fixed)
+
+	return v.Filename()
 }

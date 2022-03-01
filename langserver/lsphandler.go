@@ -2,8 +2,8 @@ package langserver
 
 import (
 	"context"
+	"drupal-lsp/langserver/parser"
 	"encoding/json"
-	"fmt"
 	"log"
 
 	"go.lsp.dev/jsonrpc2"
@@ -13,8 +13,10 @@ import (
 // LspHandler ...
 type LspHandler struct {
 	jsonrpc2.EmptyHandler
-	rootUri string
-	Indexer *Indexer
+	rootUri                 string
+	Indexer                 *Indexer
+	Buffer                  *Buffer
+	TextDocumentSyncHandler jsonrpc2.Handler
 }
 
 // InitializeParams
@@ -25,26 +27,16 @@ type InitializeParams struct {
 
 // NewLspHandler ...
 func NewLspHandler() *LspHandler {
-	return &LspHandler{}
-}
-
-func completionItemForService(s ServiceDefinition) (lsp.CompletionItem, error) {
-	return lsp.CompletionItem{
-		Kind:   lsp.VariableCompletion,
-		Label:  s.Name,
-		Detail: fmt.Sprintf("Class %s", s.Class),
-		Documentation: lsp.MarkupContent{
-			Kind:  lsp.PlainText,
-			Value: s.Class,
-		},
-	}, nil
+	return &LspHandler{
+		TextDocumentSyncHandler: &TextDocumentSyncHandler{},
+	}
 }
 
 func (h *LspHandler) handleTextDocumentCompletion(ctx context.Context, params *lsp.CompletionParams) ([]lsp.CompletionItem, error) {
 	result := make([]lsp.CompletionItem, 0, 200)
 
 	for _, item := range h.Indexer.Services {
-		serviceCompletion, err := completionItemForService(item)
+		serviceCompletion, err := parser.CompletionItemForService(item)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -58,6 +50,7 @@ func (h *LspHandler) handleTextDocumentCompletion(ctx context.Context, params *l
 // Deliver ...
 func (h *LspHandler) Deliver(ctx context.Context, r *jsonrpc2.Request, delivered bool) bool {
 
+	log.Println("Method: ", r.Method)
 	switch r.Method {
 	case lsp.MethodInitialize:
 		// Get params.
@@ -76,6 +69,9 @@ func (h *LspHandler) Deliver(ctx context.Context, r *jsonrpc2.Request, delivered
 
 		// Set the indexer.
 		h.Indexer = indexer
+
+		// Buffer.
+		h.Buffer = NewBuffer()
 
 		// Send back the response.
 		err := r.Reply(ctx, lsp.InitializeResult{
@@ -100,6 +96,27 @@ func (h *LspHandler) Deliver(ctx context.Context, r *jsonrpc2.Request, delivered
 
 	// Handle the request.
 	switch r.Method {
+	case lsp.MethodTextDocumentDidOpen:
+		var params lsp.DidOpenTextDocumentParams
+		json.Unmarshal(*r.Params, &params)
+		documentUri := UriToFilename(params.TextDocument.URI)
+		if documentUri != "" {
+			h.Buffer.UpdateBufferDoc(documentUri, params.TextDocument.Text)
+		}
+	case lsp.MethodTextDocumentDidChange:
+		var params lsp.DidChangeTextDocumentParams
+		json.Unmarshal(*r.Params, &params)
+		documentUri := UriToFilename(params.TextDocument.URI)
+		if documentUri != "" && len(params.ContentChanges) > 0 {
+			h.Buffer.UpdateBufferDoc(documentUri, params.ContentChanges[0].Text)
+		}
+	case lsp.MethodTextDocumentDidSave:
+		var params lsp.DidSaveTextDocumentParams
+		json.Unmarshal(*r.Params, &params)
+		documentUri := UriToFilename(params.TextDocument.URI)
+		if documentUri != "" {
+			h.Buffer.UpdateBufferDoc(documentUri, params.Text)
+		}
 	case lsp.MethodTextDocumentCompletion:
 		var params lsp.CompletionParams
 		json.Unmarshal(*r.Params, &params)

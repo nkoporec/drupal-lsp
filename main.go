@@ -28,7 +28,7 @@ func main() {
 	log.Printf("Starting Drupal Language Server ...")
 
 	lspHandler := langserver.NewLspHandler()
-	connectLanguageServer(os.Stdin, os.Stdout, lspHandler).Run(ctx)
+	connectLanguageServer(os.Stdin, os.Stdout, lspHandler.TextDocumentSyncHandler, lspHandler).Run(ctx)
 }
 
 func connectLanguageServer(in io.Reader, out io.Writer, handlers ...jsonrpc2.Handler) *jsonrpc2.Conn {
