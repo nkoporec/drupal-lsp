@@ -80,8 +80,7 @@ func FixDocumentRootUri(s string) string {
 
 func UriToFilename(v uri.URI) string {
 	s := string(v)
-	fixed := FixDocumentRootUri(s)
-	v = uri.URI(fixed)
+	v = uri.URI(s)
 
 	return v.Filename()
 }

@@ -13,10 +13,9 @@ import (
 // LspHandler ...
 type LspHandler struct {
 	jsonrpc2.EmptyHandler
-	rootUri                 string
-	Indexer                 *Indexer
-	Buffer                  *Buffer
-	TextDocumentSyncHandler jsonrpc2.Handler
+	rootUri string
+	Indexer *Indexer
+	Buffer  *Buffer
 }
 
 // InitializeParams
@@ -27,13 +26,15 @@ type InitializeParams struct {
 
 // NewLspHandler ...
 func NewLspHandler() *LspHandler {
-	return &LspHandler{
-		TextDocumentSyncHandler: &TextDocumentSyncHandler{},
-	}
+	return &LspHandler{}
 }
 
 func (h *LspHandler) handleTextDocumentCompletion(ctx context.Context, params *lsp.CompletionParams) ([]lsp.CompletionItem, error) {
 	result := make([]lsp.CompletionItem, 0, 200)
+
+	// Get the doc.
+	doc := h.Buffer.GetBufferDoc(UriToFilename(params.TextDocument.URI))
+	log.Println("Method call: ", doc.GetMethodCall(params.Position))
 
 	for _, item := range h.Indexer.Services {
 		serviceCompletion, err := parser.CompletionItemForService(item)
@@ -76,18 +77,21 @@ func (h *LspHandler) Deliver(ctx context.Context, r *jsonrpc2.Request, delivered
 		// Send back the response.
 		err := r.Reply(ctx, lsp.InitializeResult{
 			Capabilities: lsp.ServerCapabilities{
-				CompletionProvider: &lsp.CompletionOptions{
-					TriggerCharacters: []string{"."},
-				},
+				CompletionProvider: &lsp.CompletionOptions{},
 				DefinitionProvider: false,
 				HoverProvider:      false,
-				SignatureHelpProvider: &lsp.SignatureHelpOptions{
-					TriggerCharacters: []string{"(", ","},
+				TextDocumentSync: lsp.TextDocumentSyncOptions{
+					Change:    float64(lsp.Full),
+					OpenClose: true,
+					Save: &lsp.SaveOptions{
+						IncludeText: true,
+					},
 				},
 			},
 		}, nil)
 
 		if err != nil {
+			log.Fatal(err)
 			panic(err)
 		}
 
