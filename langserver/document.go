@@ -56,14 +56,18 @@ func (d *Document) GetMethodCall(position lsp.Position) string {
 		return ""
 	}
 
-	c = c[methodDelimiter+1:]
+	c = c[methodDelimiter:]
 
 	// Method name is till the first (
 	methodNameEnd := strings.IndexRune(c, '(')
+	if methodNameEnd == -1 {
+		return ""
+	}
+
 	methodName := c[:methodNameEnd]
 
 	// Remove extra :
-	if strings.HasPrefix(methodName, ":") {
+	if strings.HasPrefix(methodName, ":") || strings.HasPrefix(methodName, ">") {
 		methodName = methodName[1:]
 	}
 
