@@ -1,7 +1,7 @@
 package langserver
 
 import (
-	"log"
+	"errors"
 	"strings"
 
 	lsp "go.lsp.dev/protocol"
@@ -12,66 +12,58 @@ type Document struct {
 	Text string
 }
 
-func (d *Document) GetMethodCall(position lsp.Position) string {
+func (d *Document) GetMethodCall(position lsp.Position) (string, error) {
 	doc := string(d.Text)
 	c := doc
 	currentLine := 0
-	offset := 0
 	line := int(position.Line)
 
-	// @todo: this is copied over, not sure if we need to do this.
-	for currentLine < line && offset < len(doc) {
+	// Remove everything before the current line.
+	// The result is the current line and everything after it.
+	for currentLine < line {
 		currentLine++
 		lineEnd := strings.IndexRune(c, '\n')
 		if lineEnd == -1 {
 			break
 		}
-		offset += lineEnd
-		if len(c) < lineEnd+1 {
-			break
-		}
-		offset++
 		c = c[lineEnd+1:]
 	}
 
+	// Find where the current line ends and remove
+	// everything after it.
+	// We only care about the current line and the cursor position.
 	currentLineEnd := strings.IndexRune(c, '\n')
 	c = c[:currentLineEnd]
 
-	if len(c) < int(position.Character) {
-		return ""
-	}
-
+	// Method delimeter is a char that starts a method call
+	// We can have it two ways.
 	// ->method()
 	// ::method()
-	methodDelimiter := strings.IndexRune(c, '>')
-	if methodDelimiter == -1 {
-		methodDelimiter = strings.IndexRune(c, ':')
+	methodStartDelimiter := strings.IndexRune(c, '>')
+	if methodStartDelimiter == -1 {
+		methodStartDelimiter = strings.IndexRune(c, ':')
 	}
 
-	if methodDelimiter == -1 {
-		return ""
+	if methodStartDelimiter <= 0 {
+		return "", errors.New("Method start delimiter not found")
 	}
 
-	if methodDelimiter+1 > len(c) {
-		return ""
-	}
-
-	c = c[methodDelimiter:]
+	// Get everything after the method delimiter.
+	// We add one to the position to get the cursor position so
+	// we remove the actual delimeter char (: or >)
+	c = c[methodStartDelimiter+1:]
 
 	// Method name is till the first (
-	methodNameEnd := strings.IndexRune(c, '(')
-	if methodNameEnd == -1 {
-		return ""
+	methodEndDelimiter := strings.IndexRune(c, '(')
+	if methodEndDelimiter == -1 {
+		return "", errors.New("Method end delimeter not found")
 	}
 
-	methodName := c[:methodNameEnd]
+	// Get the method name
+	methodName := c[:methodEndDelimiter]
 
-	// Remove extra :
-	if strings.HasPrefix(methodName, ":") || strings.HasPrefix(methodName, ">") {
-		methodName = methodName[1:]
-	}
+	// Remove extra : as it could be \Drupal::method();
+	methodName = strings.Trim(methodName, ":")
 
-	log.Println("Method name:", methodName)
-
-	return methodName
+	return methodName, nil
 }

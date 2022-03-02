@@ -5,7 +5,6 @@ import (
 	"drupal-lsp/langserver/parser"
 	"encoding/json"
 	"log"
-	"strings"
 
 	"go.lsp.dev/jsonrpc2"
 	lsp "go.lsp.dev/protocol"
@@ -35,8 +34,13 @@ func (h *LspHandler) handleTextDocumentCompletion(ctx context.Context, params *l
 
 	// Get the doc.
 	doc := h.Buffer.GetBufferDoc(UriToFilename(params.TextDocument.URI))
-	method := doc.GetMethodCall(params.Position)
-	if strings.Contains(method, "service") || strings.Contains(method, "get") {
+	method, err := doc.GetMethodCall(params.Position)
+	if err != nil {
+		return result, err
+	}
+
+	// @todo: make this more robust, so we can use other methods as well.
+	if method == "service" || method == "get" {
 		for _, item := range h.Indexer.Services {
 			serviceCompletion, err := parser.CompletionItemForService(item)
 			if err != nil {
