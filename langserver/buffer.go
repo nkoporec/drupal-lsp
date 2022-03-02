@@ -1,7 +1,6 @@
 package langserver
 
 import (
-	"log"
 	"sync"
 )
 
@@ -17,7 +16,6 @@ func NewBuffer() *Buffer {
 }
 
 func (b *Buffer) UpdateBufferDoc(documentURI string, buf string) {
-	log.Println("Buffer updating")
 	b.mtx.Lock()
 	defer b.mtx.Unlock()
 	d := &Document{

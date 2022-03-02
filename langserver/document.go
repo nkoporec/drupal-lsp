@@ -1,8 +1,8 @@
 package langserver
 
 import (
+	"log"
 	"strings"
-	"unicode"
 
 	lsp "go.lsp.dev/protocol"
 )
@@ -19,6 +19,7 @@ func (d *Document) GetMethodCall(position lsp.Position) string {
 	offset := 0
 	line := int(position.Line)
 
+	// @todo: this is copied over, not sure if we need to do this.
 	for currentLine < line && offset < len(doc) {
 		currentLine++
 		lineEnd := strings.IndexRune(c, '\n')
@@ -33,39 +34,40 @@ func (d *Document) GetMethodCall(position lsp.Position) string {
 		c = c[lineEnd+1:]
 	}
 
-	if position.Character > 0 {
-		offset += int(position.Character)
-	}
-	o := offset
-	skipOpen := 1
+	currentLineEnd := strings.IndexRune(c, '\n')
+	c = c[:currentLineEnd]
 
-	for o >= 0 {
-		token := doc[o]
-		o--
-		if token == ';' || token == '}' || token == '{' {
-			break
-		} else if token == '(' && skipOpen <= 0 {
-			break
-		} else if token == ')' {
-			skipOpen++
-		} else if token == '(' {
-			skipOpen--
-		} else if token == '\n' || token == '\r' {
-			continue
-		}
+	if len(c) < int(position.Character) {
+		return ""
 	}
 
-	if o+1 > len(doc) {
-		return doc[o:]
+	// ->method()
+	// ::method()
+	methodDelimiter := strings.IndexRune(c, '>')
+	if methodDelimiter == -1 {
+		methodDelimiter = strings.IndexRune(c, ':')
 	}
 
-	methodCallLine := doc[o+2 : o+2+(offset-o-2)]
-	for i := 0; i < len(methodCallLine); i++ {
-		if !unicode.IsSpace(rune(methodCallLine[i])) {
-			methodCallLine = methodCallLine[i:]
-			break
-		}
+	if methodDelimiter == -1 {
+		return ""
 	}
 
-	return methodCallLine
+	if methodDelimiter+1 > len(c) {
+		return ""
+	}
+
+	c = c[methodDelimiter+1:]
+
+	// Method name is till the first (
+	methodNameEnd := strings.IndexRune(c, '(')
+	methodName := c[:methodNameEnd]
+
+	// Remove extra :
+	if strings.HasPrefix(methodName, ":") {
+		methodName = methodName[1:]
+	}
+
+	log.Println("Method name:", methodName)
+
+	return methodName
 }

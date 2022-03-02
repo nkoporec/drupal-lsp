@@ -34,7 +34,7 @@ func (h *LspHandler) handleTextDocumentCompletion(ctx context.Context, params *l
 
 	// Get the doc.
 	doc := h.Buffer.GetBufferDoc(UriToFilename(params.TextDocument.URI))
-	log.Println("Method call: ", doc.GetMethodCall(params.Position))
+	doc.GetMethodCall(params.Position)
 
 	for _, item := range h.Indexer.Services {
 		serviceCompletion, err := parser.CompletionItemForService(item)
@@ -50,8 +50,6 @@ func (h *LspHandler) handleTextDocumentCompletion(ctx context.Context, params *l
 
 // Deliver ...
 func (h *LspHandler) Deliver(ctx context.Context, r *jsonrpc2.Request, delivered bool) bool {
-
-	log.Println("Method: ", r.Method)
 	switch r.Method {
 	case lsp.MethodInitialize:
 		// Get params.
