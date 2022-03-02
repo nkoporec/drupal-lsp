@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"flag"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -13,19 +15,46 @@ import (
 	"go.lsp.dev/jsonrpc2"
 )
 
+var (
+	mode         = flag.String("mode", "stdio", "communication mode (stdio|tcp|websocket)")
+	logfile      = flag.String("logfile", "", "log to this file (in addition to stderr)")
+	printVersion = flag.Bool("version", false, "print version and exit")
+)
+
+// Update this when we do a release.
+const VERSION = "0.0.1"
+
 func main() {
+	flag.Parse()
+
+	if *printVersion {
+		fmt.Printf("drupal-lsp version: %s", VERSION)
+		os.Exit(0)
+	}
+
+	// @todo: implement other modes.
+	if *mode != "stdio" {
+		fmt.Println("We only support stdio mode")
+		os.Exit(0)
+	}
+
+	if *logfile != "" {
+		log.Println("Logging enabled")
+		log.Println(fmt.Sprintf("Logging to file: %s", *logfile))
+		f, err := os.OpenFile(*logfile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+		if err != nil {
+			log.Fatalf("Failed to open logfile: %v", err)
+		}
+		defer f.Close()
+		log.SetOutput(f)
+	}
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill, syscall.SIGTERM)
 	defer stop()
 
-	// @todo: Add a flag to allow the user to specify the file
-	f, err := os.OpenFile("/home/nkoporec/personal/drupal-lsp/drupal-lsp.log", os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer f.Close()
-	log.SetOutput(f)
-
-	log.Printf("Starting Drupal Language Server ...")
+	log.Printf(
+		fmt.Sprintf("Starting Drupal Language Server in %s mode ...", *mode),
+	)
 
 	lspHandler := langserver.NewLspHandler()
 	connectLanguageServer(os.Stdin, os.Stdout, lspHandler).Run(ctx)
