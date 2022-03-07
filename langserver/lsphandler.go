@@ -2,7 +2,6 @@ package langserver
 
 import (
 	"context"
-	"drupal-lsp/langserver/parser"
 	"encoding/json"
 	"log"
 
@@ -39,15 +38,21 @@ func (h *LspHandler) handleTextDocumentCompletion(ctx context.Context, params *l
 		return result, err
 	}
 
-	// @todo: make this more robust, so we can use other methods as well.
-	if method == "service" || method == "get" {
-		for _, item := range h.Indexer.Services {
-			serviceCompletion, err := parser.CompletionItemForService(item)
-			if err != nil {
-				log.Fatal(err)
-			}
+	// Get all parsers.
+	parsers := h.Indexer.Parsers
+	for _, parser := range parsers {
+		// Get the method call.
+		methods := parser.Methods()
+		if inSlice(methods, method) {
+			for _, def := range parser.GetDefinitions() {
+				log.Println(def.Name)
+				completion, err := parser.CompletionItem(def)
+				if err != nil {
+					return result, err
+				}
 
-			result = append(result, serviceCompletion)
+				result = append(result, completion)
+			}
 		}
 	}
 
@@ -133,4 +138,15 @@ func (h *LspHandler) Deliver(ctx context.Context, r *jsonrpc2.Request, delivered
 	}
 
 	return true
+}
+
+// @todo Move it to the appropriate place.
+func inSlice(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+
+	return false
 }

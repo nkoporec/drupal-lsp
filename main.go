@@ -16,8 +16,9 @@ import (
 )
 
 var (
-	mode         = flag.String("mode", "stdio", "communication mode (stdio|tcp|websocket)")
-	logfile      = flag.String("logfile", "", "log to this file (in addition to stderr)")
+	mode = flag.String("mode", "stdio", "communication mode (stdio|tcp|websocket)")
+	// @todo: only for testing
+	logfile      = flag.String("logfile", "/home/nkoporec/personal/drupal-lsp/drupal-lsp.log", "log to this file (in addition to stderr)")
 	printVersion = flag.Bool("version", false, "print version and exit")
 )
 
@@ -39,14 +40,14 @@ func main() {
 	}
 
 	if *logfile != "" {
-		log.Println("Logging enabled")
-		log.Println(fmt.Sprintf("Logging to file: %s", *logfile))
 		f, err := os.OpenFile(*logfile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 		if err != nil {
 			log.Fatalf("Failed to open logfile: %v", err)
 		}
 		defer f.Close()
 		log.SetOutput(f)
+		log.Println("Logging enabled")
+		log.Println(fmt.Sprintf("Logging to file: %s", *logfile))
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill, syscall.SIGTERM)
