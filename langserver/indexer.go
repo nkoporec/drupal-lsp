@@ -2,19 +2,17 @@ package langserver
 
 import (
 	"drupal-lsp/langserver/parser"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"go.lsp.dev/uri"
-	"gopkg.in/yaml.v2"
 )
 
 type Indexer struct {
 	DocumentRoot string
-	Services     []parser.ServiceDefinition
+	Parsers      []parser.Parser
 }
 
 func NewIndexer(rootUri string) *Indexer {
@@ -32,6 +30,9 @@ func (i *Indexer) Run() {
 		log.Fatal("Indexer: Directory does not exist")
 	}
 
+	// Get available parsers.
+	p := parser.InitParsers()
+	items := make(map[string][]string)
 	// Walk the document root and get all .services.yml files.
 	// @todo Make it for other file types.
 	filepath.Walk(i.DocumentRoot, func(path string, info os.FileInfo, err error) error {
@@ -44,24 +45,21 @@ func (i *Indexer) Run() {
 			return nil
 		}
 
-		if strings.Contains(path, ".services.yml") {
-			serviceFile, err := ioutil.ReadFile(path)
-			service := &parser.ServiceYaml{}
-			if err == nil {
-				err = yaml.Unmarshal(serviceFile, &service)
-			}
-
-			for name, item := range service.Services {
-				i.Services = append(i.Services, parser.ServiceDefinition{
-					Name:  name,
-					Class: item.Class,
-				})
+		// Get available parsers.
+		for name, item := range p {
+			if strings.Contains(path, item.FileExtension()) {
+				items[name] = append(items[name], path)
 			}
 		}
 
 		return nil
 	})
 
+	// Parse the files.
+	for name, par := range p {
+		par.AddDefinitions(items[name])
+		i.Parsers = append(i.Parsers, par)
+	}
 }
 
 // Remove the file:// prefix so we can access the folder.
