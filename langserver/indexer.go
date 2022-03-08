@@ -32,6 +32,7 @@ func (i *Indexer) Run() {
 
 	// Get available parsers.
 	p := parser.InitParsers()
+	items := make(map[string][]string)
 	// Walk the document root and get all .services.yml files.
 	// @todo Make it for other file types.
 	filepath.Walk(i.DocumentRoot, func(path string, info os.FileInfo, err error) error {
@@ -45,23 +46,20 @@ func (i *Indexer) Run() {
 		}
 
 		// Get available parsers.
-		for _, item := range p {
+		for name, item := range p {
 			if strings.Contains(path, item.FileExtension()) {
-				// Parse the file.
-				data := item.ParseFile(path)
-				if err != nil {
-					log.Printf("Indexer: Error parsing %s: %s", path, err)
-					return nil
-				}
-
-				// Add the parsed file to the index.
-				item.NewParser(data)
+				items[name] = append(items[name], path)
 			}
 		}
 
 		return nil
 	})
 
+	// Parse the files.
+	for name, par := range p {
+		par.AddDefinitions(items[name])
+		i.Parsers = append(i.Parsers, par)
+	}
 }
 
 // Remove the file:// prefix so we can access the folder.

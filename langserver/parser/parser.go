@@ -7,7 +7,7 @@ import (
 type Parser interface {
 	FileExtension() string
 	ParseFile(path string) interface{}
-	NewParser(data interface{})
+	AddDefinitions(files []string)
 	Methods() []string
 	GetDefinitions() []ServiceDefinition
 	CompletionItem(def ServiceDefinition) (lsp.CompletionItem, error)

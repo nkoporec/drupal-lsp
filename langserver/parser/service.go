@@ -36,14 +36,20 @@ func (s *Service) ParseFile(path string) interface{} {
 	return service
 }
 
-func (s *Service) NewParser(data interface{}) {
-	items := data.(*ServiceYaml)
+func (s *Service) AddDefinitions(items []string) {
+	for _, file := range items {
+		item := s.ParseFile(file)
+		if item == nil {
+			continue
+		}
 
-	definition := &ServiceDefinition{}
-	for name, item := range items.Services {
-		definition.Name = name
-		definition.Class = item.Class
-		s.Definitions = append(s.Definitions, *definition)
+		defs := item.(*ServiceYaml)
+		for name, def := range defs.Services {
+			s.Definitions = append(s.Definitions, ServiceDefinition{
+				Name:  name,
+				Class: def.Class,
+			})
+		}
 	}
 }
 

@@ -45,7 +45,6 @@ func (h *LspHandler) handleTextDocumentCompletion(ctx context.Context, params *l
 		methods := parser.Methods()
 		if inSlice(methods, method) {
 			for _, def := range parser.GetDefinitions() {
-				log.Println(def.Name)
 				completion, err := parser.CompletionItem(def)
 				if err != nil {
 					return result, err
