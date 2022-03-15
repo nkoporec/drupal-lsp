@@ -9,6 +9,7 @@ type Parser interface {
 	ParseFile(path string) interface{}
 	AddDefinitions(files []string)
 	Methods() []string
+	Diagnostics(text string) []lsp.Diagnostic
 	GetDefinitions() []ServiceDefinition
 	CompletionItem(def ServiceDefinition) (lsp.CompletionItem, error)
 }

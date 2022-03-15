@@ -113,21 +113,21 @@ func (h *LspHandler) Deliver(ctx context.Context, r *jsonrpc2.Request, delivered
 		json.Unmarshal(*r.Params, &params)
 		documentUri := UriToFilename(params.TextDocument.URI)
 		if documentUri != "" {
-			h.Buffer.UpdateBufferDoc(documentUri, params.TextDocument.Text)
+			h.Buffer.UpdateBufferDoc(documentUri, params.TextDocument.Text, ctx, r)
 		}
 	case lsp.MethodTextDocumentDidChange:
 		var params lsp.DidChangeTextDocumentParams
 		json.Unmarshal(*r.Params, &params)
 		documentUri := UriToFilename(params.TextDocument.URI)
 		if documentUri != "" && len(params.ContentChanges) > 0 {
-			h.Buffer.UpdateBufferDoc(documentUri, params.ContentChanges[0].Text)
+			h.Buffer.UpdateBufferDoc(documentUri, params.ContentChanges[0].Text, ctx, r)
 		}
 	case lsp.MethodTextDocumentDidSave:
 		var params lsp.DidSaveTextDocumentParams
 		json.Unmarshal(*r.Params, &params)
 		documentUri := UriToFilename(params.TextDocument.URI)
 		if documentUri != "" {
-			h.Buffer.UpdateBufferDoc(documentUri, params.Text)
+			h.Buffer.UpdateBufferDoc(documentUri, params.Text, ctx, r)
 		}
 	case lsp.MethodTextDocumentCompletion:
 		var params lsp.CompletionParams

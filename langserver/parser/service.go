@@ -80,15 +80,31 @@ func (s *Service) CompletionItem(def ServiceDefinition) (lsp.CompletionItem, err
 	}, nil
 }
 
-// @todo: Old, remove once refactoring is done
-func CompletionItemForService(s ServiceDefinition) (lsp.CompletionItem, error) {
-	return lsp.CompletionItem{
-		Kind:   lsp.VariableCompletion,
-		Label:  s.Name,
-		Detail: fmt.Sprintf("Class %s", s.Class),
-		Documentation: lsp.MarkupContent{
-			Kind:  lsp.PlainText,
-			Value: s.Class,
+func (s *Service) Diagnostics(text string) []lsp.Diagnostic {
+	result := []lsp.Diagnostic{}
+
+	// Get all service() calls
+
+	// doc := string(text)
+
+	diag := lsp.Diagnostic{
+		Code:     2,
+		Message:  "Test",
+		Source:   "drupal-lsp",
+		Severity: lsp.SeverityError,
+		Range: lsp.Range{
+			Start: lsp.Position{
+				Line:      float64(1),
+				Character: float64(4),
+			},
+			End: lsp.Position{
+				Line:      float64(1),
+				Character: float64(8),
+			},
 		},
-	}, nil
+	}
+
+	result = append(result, diag)
+
+	return result
 }

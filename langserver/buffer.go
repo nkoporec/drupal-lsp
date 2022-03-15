@@ -1,7 +1,13 @@
 package langserver
 
 import (
+	"context"
+	"log"
 	"sync"
+
+	"go.lsp.dev/jsonrpc2"
+	lsp "go.lsp.dev/protocol"
+	"go.lsp.dev/uri"
 )
 
 type Buffer struct {
@@ -15,15 +21,24 @@ func NewBuffer() *Buffer {
 	}
 }
 
-func (b *Buffer) UpdateBufferDoc(documentURI string, buf string) {
+func (b *Buffer) UpdateBufferDoc(documentURI string, buf string, ctx context.Context, r *jsonrpc2.Request) {
 	b.mtx.Lock()
 	defer b.mtx.Unlock()
 	d := &Document{
 		URI:  documentURI,
 		Text: buf,
 	}
-
 	b.Documents[documentURI] = *d
+
+	diagnostics, err := d.GetDiagnostics()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	r.Conn().Notify(ctx, lsp.MethodTextDocumentPublishDiagnostics, lsp.PublishDiagnosticsParams{
+		URI:         lsp.DocumentURI(uri.File(documentURI)),
+		Diagnostics: diagnostics,
+	})
 }
 
 func (b *Buffer) GetBufferDoc(documentURI string) *Document {
