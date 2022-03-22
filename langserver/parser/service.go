@@ -3,6 +3,13 @@ package parser
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
+	"os"
+
+	"github.com/nkoporec/php-parser/pkg/conf"
+	"github.com/nkoporec/php-parser/pkg/errors"
+	"github.com/nkoporec/php-parser/pkg/parser"
+	"github.com/nkoporec/php-parser/pkg/version"
 
 	lsp "go.lsp.dev/protocol"
 	"gopkg.in/yaml.v2"
@@ -82,10 +89,25 @@ func (s *Service) CompletionItem(def ServiceDefinition) (lsp.CompletionItem, err
 
 func (s *Service) Diagnostics(text string) []lsp.Diagnostic {
 	result := []lsp.Diagnostic{}
+	src := []byte(text)
 
-	// Get all service() calls
+	var parserErrors []*errors.Error
+	errorHandler := func(e *errors.Error) {
+		parserErrors = append(parserErrors, e)
+	}
 
-	// doc := string(text)
+	// Parse
+	rootNode, err := parser.Parse(src, conf.Config{
+		Version:          &version.Version{Major: 5, Minor: 6},
+		ErrorHandlerFunc: errorHandler,
+	})
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	goDumper := NewServiceDumper(os.Stdout)
+	rootNode.Accept(goDumper)
 
 	diag := lsp.Diagnostic{
 		Code:     2,

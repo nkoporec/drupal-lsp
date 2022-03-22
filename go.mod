@@ -3,6 +3,7 @@ module drupal-lsp
 go 1.14
 
 require (
+	github.com/nkoporec/php-parser v0.8.1
 	github.com/z7zmey/php-parser v0.7.2
 	go.lsp.dev/jsonrpc2 v0.6.2
 	go.lsp.dev/protocol v0.8.0
