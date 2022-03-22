@@ -2,7 +2,6 @@ package parser
 
 import (
 	"io"
-	"log"
 
 	"github.com/nkoporec/php-parser/pkg/ast"
 )
@@ -12,6 +11,14 @@ type Dumper struct {
 	indent        int
 	withTokens    bool
 	withPositions bool
+	StaticCalls   []*ExprStaticCall
+}
+
+type ExprStaticCall struct {
+	StartLine int
+	EndLine   int
+	StartPos  int
+	EndPos    int
 }
 
 func NewServiceDumper(writer io.Writer) *Dumper {
@@ -70,7 +77,6 @@ func (v *Dumper) Parameter(n *ast.Parameter) {
 }
 
 func (v *Dumper) Identifier(n *ast.Identifier) {
-	log.Println("her")
 }
 
 func (v *Dumper) Argument(n *ast.Argument) {
@@ -470,9 +476,14 @@ func (v *Dumper) ExprShellExec(n *ast.ExprShellExec) {
 }
 
 func (v *Dumper) ExprStaticCall(n *ast.ExprStaticCall) {
-	v.dumpVertex("Class", n.Class)
-	v.dumpVertex("Call", n.Call)
-	v.dumpVertexList("Args", n.Args)
+	staticCall := &ExprStaticCall{
+		StartLine: n.Position.StartLine,
+		EndLine:   n.Position.EndLine,
+		StartPos:  n.Position.StartPos,
+		EndPos:    n.Position.EndPos,
+	}
+
+	v.StaticCalls = append(v.StaticCalls, staticCall)
 }
 
 func (v *Dumper) ExprStaticPropertyFetch(n *ast.ExprStaticPropertyFetch) {

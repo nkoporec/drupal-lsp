@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/nkoporec/php-parser/pkg/conf"
 	"github.com/nkoporec/php-parser/pkg/errors"
@@ -27,6 +28,14 @@ type ServiceYaml struct {
 type ServiceDefinition struct {
 	Name  string
 	Class string `yaml:"class"`
+}
+
+type ServiceError struct {
+	Name      string
+	StartLine int
+	StartPos  int
+	EndLine   int
+	EndPos    int
 }
 
 func (s *Service) ParseFile(path string) interface{} {
@@ -60,6 +69,10 @@ func (s *Service) AddDefinitions(items []string) {
 	}
 }
 
+func (s *Service) Name() string {
+	return "service"
+}
+
 func (s *Service) FileExtension() string {
 	return "services.yml"
 }
@@ -87,9 +100,14 @@ func (s *Service) CompletionItem(def ServiceDefinition) (lsp.CompletionItem, err
 	}, nil
 }
 
-func (s *Service) Diagnostics(text string) []lsp.Diagnostic {
+func (s *Service) Diagnostics(text string, defs []ServiceDefinition) []lsp.Diagnostic {
 	result := []lsp.Diagnostic{}
 	src := []byte(text)
+
+	defsNames := []string{}
+	for _, def := range defs {
+		defsNames = append(defsNames, def.Name)
+	}
 
 	var parserErrors []*errors.Error
 	errorHandler := func(e *errors.Error) {
@@ -109,24 +127,68 @@ func (s *Service) Diagnostics(text string) []lsp.Diagnostic {
 	goDumper := NewServiceDumper(os.Stdout)
 	rootNode.Accept(goDumper)
 
-	diag := lsp.Diagnostic{
-		Code:     2,
-		Message:  "Test",
-		Source:   "drupal-lsp",
-		Severity: lsp.SeverityError,
-		Range: lsp.Range{
-			Start: lsp.Position{
-				Line:      float64(1),
-				Character: float64(4),
-			},
-			End: lsp.Position{
-				Line:      float64(1),
-				Character: float64(8),
-			},
-		},
+	for _, item := range goDumper.StaticCalls {
+		methodAndArg := getMethodAndArg(src, item.StartLine, item.EndLine, item.StartPos, item.EndPos)
+		for method, arg := range methodAndArg {
+			if inSlice(s.Methods(), method) {
+				if !inSlice(defsNames, arg) {
+					diag := lsp.Diagnostic{
+						Code:     2,
+						Message:  "Service not found",
+						Source:   "drupal-lsp",
+						Severity: lsp.SeverityError,
+						Range: lsp.Range{
+							Start: lsp.Position{
+								Line: float64(item.StartLine - 1),
+							},
+							End: lsp.Position{
+								Line: float64(item.EndLine),
+							},
+						},
+					}
+					result = append(result, diag)
+				}
+			}
+		}
 	}
 
-	result = append(result, diag)
+	return result
+}
+
+func getMethodAndArg(text []byte, startLine int, endLine int, startPos int, endPos int) map[string]string {
+	result := make(map[string]string)
+	doc := string(text)
+	c := doc[startPos:endPos]
+
+	methodStartDelimiter := strings.IndexRune(c, ':')
+	c = c[methodStartDelimiter+2:]
+
+	methodEndDelimiter := strings.IndexRune(c, '(')
+
+	// Get the method name
+	methodName := c[:methodEndDelimiter]
+
+	// Get the method arguments
+	arg := c[methodEndDelimiter+2:]
+	parts := strings.Split(arg, ")")
+	arg = parts[0]
+
+	// Remove the quotes
+	arg = strings.Replace(arg, "'", "", -1)
+	arg = strings.Replace(arg, "\"", "", -1)
+
+	result[methodName] = arg
 
 	return result
+}
+
+// @todo Move it to the appropriate place.
+func inSlice(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+
+	return false
 }

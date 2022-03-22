@@ -1,7 +1,6 @@
 package langserver
 
 import (
-	"drupal-lsp/langserver/parser"
 	"errors"
 	"strings"
 
@@ -13,12 +12,12 @@ type Document struct {
 	Text string
 }
 
-func (d *Document) GetDiagnostics() ([]lsp.Diagnostic, error) {
+func (d *Document) GetDiagnostics(indexer *Indexer) ([]lsp.Diagnostic, error) {
 	result := []lsp.Diagnostic{}
 
-	p := parser.InitParsers()
+	p := indexer.Parsers
 	for _, par := range p {
-		diagnostic := par.Diagnostics(d.Text)
+		diagnostic := par.Diagnostics(d.Text, par.GetDefinitions())
 		result = append(result, diagnostic...)
 	}
 

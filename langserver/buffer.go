@@ -21,7 +21,7 @@ func NewBuffer() *Buffer {
 	}
 }
 
-func (b *Buffer) UpdateBufferDoc(documentURI string, buf string, ctx context.Context, r *jsonrpc2.Request) {
+func (b *Buffer) UpdateBufferDoc(documentURI string, buf string, ctx context.Context, r *jsonrpc2.Request, Indexer *Indexer) {
 	b.mtx.Lock()
 	defer b.mtx.Unlock()
 	d := &Document{
@@ -30,7 +30,7 @@ func (b *Buffer) UpdateBufferDoc(documentURI string, buf string, ctx context.Con
 	}
 	b.Documents[documentURI] = *d
 
-	diagnostics, err := d.GetDiagnostics()
+	diagnostics, err := d.GetDiagnostics(Indexer)
 	if err != nil {
 		log.Fatal(err)
 	}

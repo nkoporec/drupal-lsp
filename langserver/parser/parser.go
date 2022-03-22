@@ -6,10 +6,11 @@ import (
 
 type Parser interface {
 	FileExtension() string
+	Name() string
 	ParseFile(path string) interface{}
 	AddDefinitions(files []string)
 	Methods() []string
-	Diagnostics(text string) []lsp.Diagnostic
+	Diagnostics(text string, defs []ServiceDefinition) []lsp.Diagnostic
 	GetDefinitions() []ServiceDefinition
 	CompletionItem(def ServiceDefinition) (lsp.CompletionItem, error)
 }
