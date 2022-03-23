@@ -9,8 +9,14 @@ type Parser interface {
 	ParseFile(path string) interface{}
 	AddDefinitions(files []string)
 	Methods() []string
-	GetDefinitions() []ServiceDefinition
-	CompletionItem(def ServiceDefinition) (lsp.CompletionItem, error)
+	Diagnostics(text string, defs []ParserDefinition) []lsp.Diagnostic
+	GetDefinitions() []ParserDefinition
+	CompletionItem(def ParserDefinition) (lsp.CompletionItem, error)
+}
+
+type ParserDefinition struct {
+	Name  string
+	Class string `yaml:"class"`
 }
 
 // Get all structs that implements Parser interface

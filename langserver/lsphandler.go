@@ -2,6 +2,7 @@ package langserver
 
 import (
 	"context"
+	"drupal-lsp/utils"
 	"encoding/json"
 	"log"
 
@@ -43,7 +44,7 @@ func (h *LspHandler) handleTextDocumentCompletion(ctx context.Context, params *l
 	for _, parser := range parsers {
 		// Get the method call.
 		methods := parser.Methods()
-		if inSlice(methods, method) {
+		if utils.InSlice(methods, method) {
 			for _, def := range parser.GetDefinitions() {
 				completion, err := parser.CompletionItem(def)
 				if err != nil {
@@ -113,21 +114,21 @@ func (h *LspHandler) Deliver(ctx context.Context, r *jsonrpc2.Request, delivered
 		json.Unmarshal(*r.Params, &params)
 		documentUri := UriToFilename(params.TextDocument.URI)
 		if documentUri != "" {
-			h.Buffer.UpdateBufferDoc(documentUri, params.TextDocument.Text)
+			h.Buffer.UpdateBufferDoc(documentUri, params.TextDocument.Text, ctx, r, h.Indexer)
 		}
 	case lsp.MethodTextDocumentDidChange:
 		var params lsp.DidChangeTextDocumentParams
 		json.Unmarshal(*r.Params, &params)
 		documentUri := UriToFilename(params.TextDocument.URI)
 		if documentUri != "" && len(params.ContentChanges) > 0 {
-			h.Buffer.UpdateBufferDoc(documentUri, params.ContentChanges[0].Text)
+			h.Buffer.UpdateBufferDoc(documentUri, params.ContentChanges[0].Text, ctx, r, h.Indexer)
 		}
 	case lsp.MethodTextDocumentDidSave:
 		var params lsp.DidSaveTextDocumentParams
 		json.Unmarshal(*r.Params, &params)
 		documentUri := UriToFilename(params.TextDocument.URI)
 		if documentUri != "" {
-			h.Buffer.UpdateBufferDoc(documentUri, params.Text)
+			h.Buffer.UpdateBufferDoc(documentUri, params.Text, ctx, r, h.Indexer)
 		}
 	case lsp.MethodTextDocumentCompletion:
 		var params lsp.CompletionParams
@@ -137,15 +138,4 @@ func (h *LspHandler) Deliver(ctx context.Context, r *jsonrpc2.Request, delivered
 	}
 
 	return true
-}
-
-// @todo Move it to the appropriate place.
-func inSlice(slice []string, item string) bool {
-	for _, s := range slice {
-		if s == item {
-			return true
-		}
-	}
-
-	return false
 }

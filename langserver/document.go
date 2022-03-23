@@ -12,6 +12,18 @@ type Document struct {
 	Text string
 }
 
+func (d *Document) GetDiagnostics(indexer *Indexer) ([]lsp.Diagnostic, error) {
+	result := []lsp.Diagnostic{}
+
+	p := indexer.Parsers
+	for _, par := range p {
+		diagnostic := par.Diagnostics(d.Text, par.GetDefinitions())
+		result = append(result, diagnostic...)
+	}
+
+	return result, nil
+}
+
 func (d *Document) GetMethodCall(position lsp.Position) (string, error) {
 	doc := string(d.Text)
 	c := doc
