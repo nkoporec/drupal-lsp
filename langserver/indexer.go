@@ -34,13 +34,11 @@ func (i *Indexer) Run() {
 	p := parser.InitParsers()
 	items := make(map[string][]string)
 	// Walk the document root and get all .services.yml files.
-	// @todo Make it for other file types.
 	filepath.Walk(i.DocumentRoot, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
 
-		// Check if the file is a .services.yml file.
 		if info.IsDir() {
 			return nil
 		}

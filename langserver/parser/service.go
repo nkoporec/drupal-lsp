@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"drupal-lsp/utils"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -8,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/z7zmey/php-parser/pkg/conf"
-	"github.com/z7zmey/php-parser/pkg/errors"
 	"github.com/z7zmey/php-parser/pkg/parser"
 	"github.com/z7zmey/php-parser/pkg/version"
 
@@ -18,24 +18,11 @@ import (
 
 type Service struct {
 	File        *ServiceYaml
-	Definitions []ServiceDefinition
+	Definitions []ParserDefinition
 }
 
 type ServiceYaml struct {
-	Services map[string]ServiceDefinition
-}
-
-type ServiceDefinition struct {
-	Name  string
-	Class string `yaml:"class"`
-}
-
-type ServiceError struct {
-	Name      string
-	StartLine int
-	StartPos  int
-	EndLine   int
-	EndPos    int
+	Services map[string]ParserDefinition
 }
 
 func (s *Service) ParseFile(path string) interface{} {
@@ -61,16 +48,12 @@ func (s *Service) AddDefinitions(items []string) {
 
 		defs := item.(*ServiceYaml)
 		for name, def := range defs.Services {
-			s.Definitions = append(s.Definitions, ServiceDefinition{
+			s.Definitions = append(s.Definitions, ParserDefinition{
 				Name:  name,
 				Class: def.Class,
 			})
 		}
 	}
-}
-
-func (s *Service) Name() string {
-	return "service"
 }
 
 func (s *Service) FileExtension() string {
@@ -84,11 +67,11 @@ func (s *Service) Methods() []string {
 	}
 }
 
-func (s *Service) GetDefinitions() []ServiceDefinition {
+func (s *Service) GetDefinitions() []ParserDefinition {
 	return s.Definitions
 }
 
-func (s *Service) CompletionItem(def ServiceDefinition) (lsp.CompletionItem, error) {
+func (s *Service) CompletionItem(def ParserDefinition) (lsp.CompletionItem, error) {
 	return lsp.CompletionItem{
 		Kind:   lsp.VariableCompletion,
 		Label:  def.Name,
@@ -100,7 +83,7 @@ func (s *Service) CompletionItem(def ServiceDefinition) (lsp.CompletionItem, err
 	}, nil
 }
 
-func (s *Service) Diagnostics(text string, defs []ServiceDefinition) []lsp.Diagnostic {
+func (s *Service) Diagnostics(text string, defs []ParserDefinition) []lsp.Diagnostic {
 	result := []lsp.Diagnostic{}
 	src := []byte(text)
 
@@ -109,15 +92,10 @@ func (s *Service) Diagnostics(text string, defs []ServiceDefinition) []lsp.Diagn
 		defsNames = append(defsNames, def.Name)
 	}
 
-	var parserErrors []*errors.Error
-	errorHandler := func(e *errors.Error) {
-		parserErrors = append(parserErrors, e)
-	}
-
 	// Parse
+	// @todo: refactor this, so it can be reused
 	rootNode, err := parser.Parse(src, conf.Config{
-		Version:          &version.Version{Major: 5, Minor: 6},
-		ErrorHandlerFunc: errorHandler,
+		Version: &version.Version{Major: 5, Minor: 6},
 	})
 
 	if err != nil {
@@ -130,24 +108,27 @@ func (s *Service) Diagnostics(text string, defs []ServiceDefinition) []lsp.Diagn
 	for _, item := range goDumper.StaticCalls {
 		methodAndArg := getMethodAndArg(src, item.StartLine, item.EndLine, item.StartPos, item.EndPos)
 		for method, arg := range methodAndArg {
-			if inSlice(s.Methods(), method) {
-				if !inSlice(defsNames, arg) {
-					diag := lsp.Diagnostic{
-						Code:     2,
-						Message:  "Service not found",
-						Source:   "drupal-lsp",
-						Severity: lsp.SeverityError,
-						Range: lsp.Range{
-							Start: lsp.Position{
-								Line: float64(item.StartLine - 1),
-							},
-							End: lsp.Position{
-								Line: float64(item.EndLine),
-							},
+			if !utils.InSlice(s.Methods(), method) {
+				continue
+			}
+
+			// If the arg is not in the list then show the error.
+			if !utils.InSlice(defsNames, arg) {
+				diag := lsp.Diagnostic{
+					Code:     2,
+					Message:  fmt.Sprintf("Undefined service '%s'", arg),
+					Source:   "drupal-lsp",
+					Severity: lsp.SeverityError,
+					Range: lsp.Range{
+						Start: lsp.Position{
+							Line: float64(item.StartLine - 1),
 						},
-					}
-					result = append(result, diag)
+						End: lsp.Position{
+							Line: float64(item.EndLine),
+						},
+					},
 				}
+				result = append(result, diag)
 			}
 		}
 	}
@@ -155,6 +136,10 @@ func (s *Service) Diagnostics(text string, defs []ServiceDefinition) []lsp.Diagn
 	return result
 }
 
+// Helper func to get the method and arg.
+// eq. \Drupal::service('foo')
+// method: service
+// arg: foo
 func getMethodAndArg(text []byte, startLine int, endLine int, startPos int, endPos int) map[string]string {
 	result := make(map[string]string)
 	doc := string(text)
@@ -180,15 +165,4 @@ func getMethodAndArg(text []byte, startLine int, endLine int, startPos int, endP
 	result[methodName] = arg
 
 	return result
-}
-
-// @todo Move it to the appropriate place.
-func inSlice(slice []string, item string) bool {
-	for _, s := range slice {
-		if s == item {
-			return true
-		}
-	}
-
-	return false
 }

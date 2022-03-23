@@ -25,16 +25,6 @@ func NewServiceDumper(writer io.Writer) *Dumper {
 	return &Dumper{writer: writer}
 }
 
-func (v *Dumper) WithTokens() *Dumper {
-	v.withTokens = true
-	return v
-}
-
-func (v *Dumper) WithPositions() *Dumper {
-	v.withPositions = true
-	return v
-}
-
 func (v *Dumper) Dump(n ast.Vertex) {
 	n.Accept(v)
 }
