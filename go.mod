@@ -1,4 +1,4 @@
-module drupal-lsp
+module github.com/nkoporec/drupal-lsp
 
 go 1.14
 

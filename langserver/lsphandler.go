@@ -2,9 +2,10 @@ package langserver
 
 import (
 	"context"
-	"drupal-lsp/utils"
 	"encoding/json"
 	"log"
+
+	"github.com/nkoporec/drupal-lsp/utils"
 
 	"go.lsp.dev/jsonrpc2"
 	lsp "go.lsp.dev/protocol"

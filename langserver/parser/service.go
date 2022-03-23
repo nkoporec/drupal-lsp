@@ -1,12 +1,13 @@
 package parser
 
 import (
-	"drupal-lsp/utils"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 	"strings"
+
+	"github.com/nkoporec/drupal-lsp/utils"
 
 	"github.com/z7zmey/php-parser/pkg/conf"
 	"github.com/z7zmey/php-parser/pkg/parser"

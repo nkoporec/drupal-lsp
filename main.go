@@ -10,7 +10,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"drupal-lsp/langserver"
+	"github.com/nkoporec/drupal-lsp/langserver"
 
 	"go.lsp.dev/jsonrpc2"
 )

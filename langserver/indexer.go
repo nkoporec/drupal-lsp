@@ -1,11 +1,12 @@
 package langserver
 
 import (
-	"drupal-lsp/langserver/parser"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/nkoporec/drupal-lsp/langserver/parser"
 
 	"go.lsp.dev/uri"
 )
