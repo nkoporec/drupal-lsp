@@ -30,7 +30,7 @@ local configs = require 'lspconfig.configs'
 if not configs.drupal then
 	configs.drupal = {
 		default_config = {
-    		cmd = { 'PATH_TO_DRUPAL_LSP'},
+    		cmd = {'drupal-lsp'},
     		filetypes = { 'php'},
 			root_dir = function(fname)
 			  return lspconfig.util.root_pattern('composer.json', '.git')(fname)
