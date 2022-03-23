@@ -2,12 +2,21 @@
 
 Drupal LSP (Drupal Language Server) is a language server implementation compatible with [Language Server Protocol](https://github.com/microsoft/language-server-protocol).
 
+
+
+![ezgif-5-924ec3e574](https://user-images.githubusercontent.com/35064680/159663609-8d8df566-d81f-4db1-8a3c-f67e4726fa7f.gif)
+
+
+
+
 ## Features
 
 - [x] Service auto-completion
 - [x] Service diagnostics
+- [ ] Service go-to definition
 - [ ] Routes auto-completion
-- [ ] Route diagnostics
+- [ ] Routes diagnostics
+- [ ] Routes go-to definition
 - [ ] Hooks
 
 ### Installation
