@@ -3,7 +3,7 @@ package parser
 import (
 	"io"
 
-	"github.com/nkoporec/php-parser/pkg/ast"
+	"github.com/z7zmey/php-parser/pkg/ast"
 )
 
 type Dumper struct {

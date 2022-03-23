@@ -7,10 +7,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/nkoporec/php-parser/pkg/conf"
-	"github.com/nkoporec/php-parser/pkg/errors"
-	"github.com/nkoporec/php-parser/pkg/parser"
-	"github.com/nkoporec/php-parser/pkg/version"
+	"github.com/z7zmey/php-parser/pkg/conf"
+	"github.com/z7zmey/php-parser/pkg/errors"
+	"github.com/z7zmey/php-parser/pkg/parser"
+	"github.com/z7zmey/php-parser/pkg/version"
 
 	lsp "go.lsp.dev/protocol"
 	"gopkg.in/yaml.v2"
