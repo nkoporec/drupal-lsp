@@ -4,14 +4,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"os"
 	"strings"
 
-	"github.com/nkoporec/drupal-lsp/utils"
-
-	"github.com/z7zmey/php-parser/pkg/conf"
-	"github.com/z7zmey/php-parser/pkg/parser"
-	"github.com/z7zmey/php-parser/pkg/version"
+	"github.com/nkoporec/drupal-lsp/php"
 
 	lsp "go.lsp.dev/protocol"
 	"gopkg.in/yaml.v2"
@@ -93,45 +88,10 @@ func (s *Service) Diagnostics(text string, defs []ParserDefinition) []lsp.Diagno
 		defsNames = append(defsNames, def.Name)
 	}
 
-	// Parse
-	// @todo: refactor this, so it can be reused
-	rootNode, err := parser.Parse(src, conf.Config{
-		Version: &version.Version{Major: 5, Minor: 6},
-	})
-
+	// Parse the php file.
+	_, err := php.Parse(src)
 	if err != nil {
 		log.Fatal(err)
-	}
-
-	goDumper := NewServiceDumper(os.Stdout)
-	rootNode.Accept(goDumper)
-
-	for _, item := range goDumper.StaticCalls {
-		methodAndArg := getMethodAndArg(src, item.StartLine, item.EndLine, item.StartPos, item.EndPos)
-		for method, arg := range methodAndArg {
-			if !utils.InSlice(s.Methods(), method) {
-				continue
-			}
-
-			// If the arg is not in the list then show the error.
-			if !utils.InSlice(defsNames, arg) {
-				diag := lsp.Diagnostic{
-					Code:     2,
-					Message:  fmt.Sprintf("Undefined service '%s'", arg),
-					Source:   "drupal-lsp",
-					Severity: lsp.SeverityError,
-					Range: lsp.Range{
-						Start: lsp.Position{
-							Line: float64(item.StartLine - 1),
-						},
-						End: lsp.Position{
-							Line: float64(item.EndLine),
-						},
-					},
-				}
-				result = append(result, diag)
-			}
-		}
 	}
 
 	return result
