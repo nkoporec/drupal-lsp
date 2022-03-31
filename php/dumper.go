@@ -2,7 +2,6 @@ package php
 
 import (
 	"io"
-	"log"
 
 	"github.com/z7zmey/php-parser/pkg/ast"
 )
@@ -41,7 +40,6 @@ func (v *PhpDumper) dumpStaticCall(key string, node ast.Vertex) {
 	if node == nil {
 		return
 	}
-	log.Println("here")
 	node.Accept(v)
 }
 

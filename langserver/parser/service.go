@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/nkoporec/drupal-lsp/php"
+	"github.com/nkoporec/drupal-lsp/utils"
 
 	lsp "go.lsp.dev/protocol"
 	"gopkg.in/yaml.v2"
@@ -89,41 +90,52 @@ func (s *Service) Diagnostics(text string, defs []ParserDefinition) []lsp.Diagno
 	}
 
 	// Parse the php file.
-	_, err := php.Parse(src)
+	parsedDoc, err := php.Parse(src)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	return result
-}
+	// Get all \Drupal::service calls.
+	for _, static := range parsedDoc.StaticCalls {
+		if static.Class.Name != "Drupal" {
+			continue
+		}
 
-// Helper func to get the method and arg.
-// eq. \Drupal::service('foo')
-// method: service
-// arg: foo
-func getMethodAndArg(text []byte, startLine int, endLine int, startPos int, endPos int) map[string]string {
-	result := make(map[string]string)
-	doc := string(text)
-	c := doc[startPos:endPos]
+		if !utils.InSlice(s.Methods(), static.Method.Name) {
+			continue
+		}
 
-	methodStartDelimiter := strings.IndexRune(c, ':')
-	c = c[methodStartDelimiter+2:]
+		if len(static.Args) != 1 {
+			continue
+		}
 
-	methodEndDelimiter := strings.IndexRune(c, '(')
+		arg := static.Args[0]
 
-	// Get the method name
-	methodName := c[:methodEndDelimiter]
+		// Strip quotes from a string.
+		argName := strings.Trim(arg.Name, "\"")
+		argName = strings.Trim(arg.Name, "'")
 
-	// Get the method arguments
-	arg := c[methodEndDelimiter+2:]
-	parts := strings.Split(arg, ")")
-	arg = parts[0]
-
-	// Remove the quotes
-	arg = strings.Replace(arg, "'", "", -1)
-	arg = strings.Replace(arg, "\"", "", -1)
-
-	result[methodName] = arg
+		// If the arg is not in the list then show the error.
+		if !utils.InSlice(defsNames, argName) {
+			diag := lsp.Diagnostic{
+				Code:     2,
+				Message:  fmt.Sprintf("Undefined service '%s'", arg.Name),
+				Source:   "drupal-lsp",
+				Severity: lsp.SeverityError,
+				Range: lsp.Range{
+					Start: lsp.Position{
+						Line:      float64(arg.Position.StartLine - 1),
+						Character: float64(arg.Position.StartPos),
+					},
+					End: lsp.Position{
+						Line:      float64(arg.Position.EndLine),
+						Character: float64(arg.Position.EndPos),
+					},
+				},
+			}
+			result = append(result, diag)
+		}
+	}
 
 	return result
 }
