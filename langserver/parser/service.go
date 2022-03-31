@@ -60,7 +60,6 @@ func (s *Service) FileExtension() string {
 func (s *Service) Methods() []string {
 	return []string{
 		"service",
-		"get",
 	}
 }
 
