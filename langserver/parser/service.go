@@ -4,14 +4,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"os"
 	"strings"
 
+	"github.com/nkoporec/drupal-lsp/php"
 	"github.com/nkoporec/drupal-lsp/utils"
-
-	"github.com/z7zmey/php-parser/pkg/conf"
-	"github.com/z7zmey/php-parser/pkg/parser"
-	"github.com/z7zmey/php-parser/pkg/version"
 
 	lsp "go.lsp.dev/protocol"
 	"gopkg.in/yaml.v2"
@@ -64,7 +60,6 @@ func (s *Service) FileExtension() string {
 func (s *Service) Methods() []string {
 	return []string{
 		"service",
-		"get",
 	}
 }
 
@@ -93,77 +88,53 @@ func (s *Service) Diagnostics(text string, defs []ParserDefinition) []lsp.Diagno
 		defsNames = append(defsNames, def.Name)
 	}
 
-	// Parse
-	// @todo: refactor this, so it can be reused
-	rootNode, err := parser.Parse(src, conf.Config{
-		Version: &version.Version{Major: 5, Minor: 6},
-	})
-
+	// Parse the php file.
+	parsedDoc, err := php.Parse(src)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	goDumper := NewServiceDumper(os.Stdout)
-	rootNode.Accept(goDumper)
+	// Get all \Drupal::service calls.
+	for _, static := range parsedDoc.StaticCalls {
+		if static.Class.Name != "Drupal" {
+			continue
+		}
 
-	for _, item := range goDumper.StaticCalls {
-		methodAndArg := getMethodAndArg(src, item.StartLine, item.EndLine, item.StartPos, item.EndPos)
-		for method, arg := range methodAndArg {
-			if !utils.InSlice(s.Methods(), method) {
-				continue
-			}
+		if !utils.InSlice(s.Methods(), static.Method.Name) {
+			continue
+		}
 
-			// If the arg is not in the list then show the error.
-			if !utils.InSlice(defsNames, arg) {
-				diag := lsp.Diagnostic{
-					Code:     2,
-					Message:  fmt.Sprintf("Undefined service '%s'", arg),
-					Source:   "drupal-lsp",
-					Severity: lsp.SeverityError,
-					Range: lsp.Range{
-						Start: lsp.Position{
-							Line: float64(item.StartLine - 1),
-						},
-						End: lsp.Position{
-							Line: float64(item.EndLine),
-						},
+		if len(static.Args) != 1 {
+			continue
+		}
+
+		arg := static.Args[0]
+
+		// Strip quotes from a string.
+		argName := strings.Trim(arg.Name, "\"")
+		argName = strings.Trim(arg.Name, "'")
+
+		// If the arg is not in the list then show the error.
+		if !utils.InSlice(defsNames, argName) {
+			diag := lsp.Diagnostic{
+				Code:     2,
+				Message:  fmt.Sprintf("Undefined service '%s'", arg.Name),
+				Source:   "drupal-lsp",
+				Severity: lsp.SeverityError,
+				Range: lsp.Range{
+					Start: lsp.Position{
+						Line:      float64(arg.Position.StartLine - 1),
+						Character: float64(arg.Position.StartPos),
 					},
-				}
-				result = append(result, diag)
+					End: lsp.Position{
+						Line:      float64(arg.Position.EndLine),
+						Character: float64(arg.Position.EndPos),
+					},
+				},
 			}
+			result = append(result, diag)
 		}
 	}
-
-	return result
-}
-
-// Helper func to get the method and arg.
-// eq. \Drupal::service('foo')
-// method: service
-// arg: foo
-func getMethodAndArg(text []byte, startLine int, endLine int, startPos int, endPos int) map[string]string {
-	result := make(map[string]string)
-	doc := string(text)
-	c := doc[startPos:endPos]
-
-	methodStartDelimiter := strings.IndexRune(c, ':')
-	c = c[methodStartDelimiter+2:]
-
-	methodEndDelimiter := strings.IndexRune(c, '(')
-
-	// Get the method name
-	methodName := c[:methodEndDelimiter]
-
-	// Get the method arguments
-	arg := c[methodEndDelimiter+2:]
-	parts := strings.Split(arg, ")")
-	arg = parts[0]
-
-	// Remove the quotes
-	arg = strings.Replace(arg, "'", "", -1)
-	arg = strings.Replace(arg, "\"", "", -1)
-
-	result[methodName] = arg
 
 	return result
 }
