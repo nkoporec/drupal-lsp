@@ -75,8 +75,9 @@ func (i *Indexer) Run() {
 
 					// Add the namespace to the list.
 					phpClasses = append(phpClasses, parser.PhpClass{
-						Namespace: item + "\\" + className,
-						Path:      path,
+						Namespace:   item + "\\" + className,
+						Path:        path,
+						Description: "",
 					})
 				}
 				line++

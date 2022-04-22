@@ -16,13 +16,17 @@ type Parser interface {
 }
 
 type ParserDefinition struct {
-	Name  string
-	Class string `yaml:"class"`
+	Name      string
+	Class     string `yaml:"class"`
+	Arguments string `yaml:"arguments"`
+	Parent    string `yaml:"parent"`
+	Tags      string `yaml:"tags"`
 }
 
 type PhpClass struct {
-	Namespace string
-	Path      string
+	Namespace   string
+	Path        string
+	Description string
 }
 
 // Get all structs that implements Parser interface

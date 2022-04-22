@@ -62,8 +62,6 @@ func (h *LspHandler) handleTextDocumentCompletion(ctx context.Context, params *l
 }
 
 func (h *LspHandler) handleGoToDefinition(ctx context.Context, params *lsp.TextDocumentPositionParams, i *Indexer) ([]lsp.Location, error) {
-	log.Println(params.TextDocument.URI)
-
 	// @todo: Implement.
 	result := make([]lsp.Location, 0, 200)
 
@@ -88,12 +86,50 @@ func (h *LspHandler) handleGoToDefinition(ctx context.Context, params *lsp.TextD
 			for _, class := range definitions {
 				for _, item := range i.PhpClasses {
 					if item.Namespace == class {
-						log.Println("Namespace", item.Namespace)
 						// @todo: Implement start/end range.
 						result = append(result, lsp.Location{
 							URI:   uri.File(item.Path),
 							Range: lsp.Range{},
 						})
+					}
+				}
+			}
+		}
+	}
+
+	return result, nil
+}
+
+func (h *LspHandler) handleHoverDefinition(ctx context.Context, params *lsp.TextDocumentPositionParams, i *Indexer) (lsp.Hover, error) {
+	result := lsp.Hover{}
+
+	doc := h.Buffer.GetBufferDoc(UriToFilename(params.TextDocument.URI))
+	method, err := doc.GetMethodCall(params.Position)
+	if err != nil {
+		return result, err
+	}
+
+	// Get all parsers.
+	parsers := h.Indexer.Parsers
+	for _, parser := range parsers {
+		// Get the method call.
+		methods := parser.Methods()
+		if utils.InSlice(methods, method) {
+			methodParams, err := doc.GetMethodParams(params.Position)
+			if err != nil {
+				return result, err
+			}
+
+			definitions := parser.GetGoToDefinition(methodParams)
+			for _, class := range definitions {
+				for _, item := range i.PhpClasses {
+					if item.Namespace == class {
+						result = lsp.Hover{
+							Contents: lsp.MarkupContent{
+								Kind:  "php",
+								Value: item.Namespace + "\n\n" + item.Path + "\n\n" + item.Description,
+							},
+						}
 					}
 				}
 			}
@@ -132,7 +168,7 @@ func (h *LspHandler) Deliver(ctx context.Context, r *jsonrpc2.Request, delivered
 			Capabilities: lsp.ServerCapabilities{
 				CompletionProvider: &lsp.CompletionOptions{},
 				DefinitionProvider: true,
-				HoverProvider:      false,
+				HoverProvider:      true,
 				TextDocumentSync: lsp.TextDocumentSyncOptions{
 					Change:    float64(lsp.Full),
 					OpenClose: true,
@@ -180,10 +216,14 @@ func (h *LspHandler) Deliver(ctx context.Context, r *jsonrpc2.Request, delivered
 		items, err := h.handleTextDocumentCompletion(ctx, &params)
 		r.Reply(ctx, items, err)
 	case lsp.MethodTextDocumentDefinition:
-		log.Println("go to def")
 		var params lsp.TextDocumentPositionParams
 		json.Unmarshal(*r.Params, &params)
 		found, err := h.handleGoToDefinition(ctx, &params, h.Indexer)
+		r.Reply(ctx, found, err)
+	case lsp.MethodTextDocumentHover:
+		var params lsp.TextDocumentPositionParams
+		json.Unmarshal(*r.Params, &params)
+		found, err := h.handleHoverDefinition(ctx, &params, h.Indexer)
 		r.Reply(ctx, found, err)
 	}
 
