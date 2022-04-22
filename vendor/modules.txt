@@ -1,0 +1,47 @@
+# github.com/francoispqt/gojay v1.2.13
+github.com/francoispqt/gojay
+# github.com/z7zmey/php-parser v0.8.0-rc.1.0.20210213215434-367eff9de651
+## explicit
+github.com/z7zmey/php-parser/internal/php5
+github.com/z7zmey/php-parser/internal/php7
+github.com/z7zmey/php-parser/internal/position
+github.com/z7zmey/php-parser/internal/scanner
+github.com/z7zmey/php-parser/pkg/ast
+github.com/z7zmey/php-parser/pkg/conf
+github.com/z7zmey/php-parser/pkg/errors
+github.com/z7zmey/php-parser/pkg/parser
+github.com/z7zmey/php-parser/pkg/position
+github.com/z7zmey/php-parser/pkg/token
+github.com/z7zmey/php-parser/pkg/version
+# go.lsp.dev/jsonrpc2 v0.6.2
+## explicit
+go.lsp.dev/jsonrpc2
+# go.lsp.dev/protocol v0.8.0
+## explicit
+go.lsp.dev/protocol
+go.lsp.dev/protocol/internal/gojaypool
+# go.lsp.dev/uri v0.3.0
+## explicit
+go.lsp.dev/uri
+# go.uber.org/atomic v1.7.0
+go.uber.org/atomic
+# go.uber.org/multierr v1.6.0
+## explicit
+go.uber.org/multierr
+# go.uber.org/zap v1.16.0
+## explicit
+go.uber.org/zap
+go.uber.org/zap/buffer
+go.uber.org/zap/internal/bufferpool
+go.uber.org/zap/internal/color
+go.uber.org/zap/internal/exit
+go.uber.org/zap/zapcore
+# golang.org/x/lint v0.0.0-20200302205851-738671d3881b
+## explicit
+# golang.org/x/tools v0.0.0-20200904185747-39188db58858
+## explicit
+# gopkg.in/yaml.v2 v2.4.0
+## explicit
+gopkg.in/yaml.v2
+# honnef.co/go/tools v0.0.1-2020.1.5
+## explicit
