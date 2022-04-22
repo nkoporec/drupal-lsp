@@ -12,11 +12,17 @@ type Parser interface {
 	Diagnostics(text string, defs []ParserDefinition) []lsp.Diagnostic
 	GetDefinitions() []ParserDefinition
 	CompletionItem(def ParserDefinition) (lsp.CompletionItem, error)
+	GetGoToDefinition(params string) []string
 }
 
 type ParserDefinition struct {
 	Name  string
 	Class string `yaml:"class"`
+}
+
+type PhpClass struct {
+	Namespace string
+	Path      string
 }
 
 // Get all structs that implements Parser interface

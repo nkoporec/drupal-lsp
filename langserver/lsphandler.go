@@ -9,6 +9,7 @@ import (
 
 	"go.lsp.dev/jsonrpc2"
 	lsp "go.lsp.dev/protocol"
+	"go.lsp.dev/uri"
 )
 
 // LspHandler ...
@@ -60,6 +61,48 @@ func (h *LspHandler) handleTextDocumentCompletion(ctx context.Context, params *l
 	return result, nil
 }
 
+func (h *LspHandler) handleGoToDefinition(ctx context.Context, params *lsp.TextDocumentPositionParams, i *Indexer) ([]lsp.Location, error) {
+	log.Println(params.TextDocument.URI)
+
+	// @todo: Implement.
+	result := make([]lsp.Location, 0, 200)
+
+	doc := h.Buffer.GetBufferDoc(UriToFilename(params.TextDocument.URI))
+	method, err := doc.GetMethodCall(params.Position)
+	if err != nil {
+		return result, err
+	}
+
+	// Get all parsers.
+	parsers := h.Indexer.Parsers
+	for _, parser := range parsers {
+		// Get the method call.
+		methods := parser.Methods()
+		if utils.InSlice(methods, method) {
+			methodParams, err := doc.GetMethodParams(params.Position)
+			if err != nil {
+				return result, err
+			}
+
+			definitions := parser.GetGoToDefinition(methodParams)
+			for _, class := range definitions {
+				for _, item := range i.PhpClasses {
+					if item.Namespace == class {
+						log.Println("Namespace", item.Namespace)
+						// @todo: Implement start/end range.
+						result = append(result, lsp.Location{
+							URI:   uri.File(item.Path),
+							Range: lsp.Range{},
+						})
+					}
+				}
+			}
+		}
+	}
+
+	return result, nil
+}
+
 // Deliver ...
 func (h *LspHandler) Deliver(ctx context.Context, r *jsonrpc2.Request, delivered bool) bool {
 	switch r.Method {
@@ -88,7 +131,7 @@ func (h *LspHandler) Deliver(ctx context.Context, r *jsonrpc2.Request, delivered
 		err := r.Reply(ctx, lsp.InitializeResult{
 			Capabilities: lsp.ServerCapabilities{
 				CompletionProvider: &lsp.CompletionOptions{},
-				DefinitionProvider: false,
+				DefinitionProvider: true,
 				HoverProvider:      false,
 				TextDocumentSync: lsp.TextDocumentSyncOptions{
 					Change:    float64(lsp.Full),
@@ -136,6 +179,12 @@ func (h *LspHandler) Deliver(ctx context.Context, r *jsonrpc2.Request, delivered
 		json.Unmarshal(*r.Params, &params)
 		items, err := h.handleTextDocumentCompletion(ctx, &params)
 		r.Reply(ctx, items, err)
+	case lsp.MethodTextDocumentDefinition:
+		log.Println("go to def")
+		var params lsp.TextDocumentPositionParams
+		json.Unmarshal(*r.Params, &params)
+		found, err := h.handleGoToDefinition(ctx, &params, h.Indexer)
+		r.Reply(ctx, found, err)
 	}
 
 	return true

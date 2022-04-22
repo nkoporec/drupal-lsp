@@ -79,3 +79,61 @@ func (d *Document) GetMethodCall(position lsp.Position) (string, error) {
 
 	return methodName, nil
 }
+
+func (d *Document) GetMethodParams(position lsp.Position) (string, error) {
+	doc := string(d.Text)
+	c := doc
+	currentLine := 0
+	line := int(position.Line)
+
+	// Remove everything before the current line.
+	// The result is the current line and everything after it.
+	for currentLine < line {
+		currentLine++
+		lineEnd := strings.IndexRune(c, '\n')
+		if lineEnd == -1 {
+			break
+		}
+		c = c[lineEnd+1:]
+	}
+
+	// Find where the current line ends and remove
+	// everything after it.
+	// We only care about the current line and the cursor position.
+	currentLineEnd := strings.IndexRune(c, '\n')
+	c = c[:currentLineEnd]
+
+	// Method delimeter is a char that starts a method call
+	// We can have it two ways.
+	// ->method()
+	// ::method()
+	methodStartDelimiter := strings.IndexRune(c, '>')
+	if methodStartDelimiter == -1 {
+		methodStartDelimiter = strings.IndexRune(c, ':')
+	}
+
+	if methodStartDelimiter <= 0 {
+		return "", errors.New("Method start delimiter not found")
+	}
+
+	// Get everything after the method delimiter.
+	// We add one to the position to get the cursor position so
+	// we remove the actual delimeter char (: or >)
+	c = c[methodStartDelimiter+1:]
+
+	methodEndDelimiter := strings.IndexRune(c, '(')
+	if methodEndDelimiter == -1 {
+		return "", errors.New("Method end delimeter not found")
+	}
+
+	// Get the method params, eq ('a', 'b', 'c')
+	methodParams := c[methodEndDelimiter:]
+
+	// Remove the first and last char ( )
+	methodParams = methodParams[1 : len(methodParams)-2]
+
+	methodParams = strings.Trim(methodParams, "'")
+	methodParams = strings.Trim(methodParams, "\"")
+
+	return methodParams, nil
+}

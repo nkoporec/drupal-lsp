@@ -138,3 +138,15 @@ func (s *Service) Diagnostics(text string, defs []ParserDefinition) []lsp.Diagno
 
 	return result
 }
+
+func (s *Service) GetGoToDefinition(params string) []string {
+	result := make([]string, 0, 200)
+
+	for _, def := range s.GetDefinitions() {
+		if def.Name == params {
+			result = append(result, def.Class)
+		}
+	}
+
+	return result
+}
