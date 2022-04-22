@@ -21,11 +21,11 @@ Drupal LSP (Drupal Language Server) is a language server implementation compatib
 
 ### Installation
 
+
 To build and install the standalone drupal-lsp run
 
 ```bash
-git clone https://github.com/nkoporec/drupal-lsp
-go install
+git get https://github.com/nkoporec/drupal-lsp
 ```
 
 ### Configuration for [neovim builtin LSP](https://neovim.io/doc/user/lsp.html) with [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig)
