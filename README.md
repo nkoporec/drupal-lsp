@@ -13,7 +13,7 @@ Drupal LSP (Drupal Language Server) is a language server implementation compatib
 
 - [x] Service auto-completion
 - [x] Service diagnostics
-- [ ] Service go-to definition
+- [x] Service go-to definition
 - [ ] Routes auto-completion
 - [ ] Routes diagnostics
 - [ ] Routes go-to definition
