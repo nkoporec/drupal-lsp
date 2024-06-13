@@ -25,7 +25,7 @@ Drupal LSP (Drupal Language Server) is a language server implementation compatib
 To build and install the standalone drupal-lsp run
 
 ```bash
-git get https://github.com/nkoporec/drupal-lsp
+go install github.com/nkoporec/drupal-lsp@latest
 ```
 
 ### Configuration for [neovim builtin LSP](https://neovim.io/doc/user/lsp.html) with [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig)
